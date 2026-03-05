@@ -52,7 +52,7 @@ const CategorySidebar = ({ show, handleClose }) => {
               disabled={loading}
               required
             />
-            <Button type="submit" variant="primary" disabled={loading}>
+            <Button type="submit" className="btn-glass-solid" disabled={loading}>
               Add
             </Button>
           </InputGroup>

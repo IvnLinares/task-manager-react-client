@@ -51,15 +51,14 @@ const TaskModal = ({ show, handleClose, refreshTasks, editingTask }) => {
     setError('');
   };
 
-  const handleCategoryChange = (e) => {
-    const options = e.target.options;
-    const values = [];
-    for (let i = 0; i < options.length; i++) {
-      if (options[i].selected) {
-        values.push(parseInt(options[i].value));
+  const handleCategoryToggle = (categoryId) => {
+    setSelectedCategories(prev => {
+      if (prev.includes(categoryId)) {
+        return prev.filter(id => id !== categoryId);
+      } else {
+        return [...prev, categoryId];
       }
-    }
-    setSelectedCategories(values);
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -156,14 +155,27 @@ const TaskModal = ({ show, handleClose, refreshTasks, editingTask }) => {
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Categories (Multi-select)</Form.Label>
-            <Form.Select multiple value={selectedCategories} onChange={handleCategoryChange} style={{ height: '100px' }}>
-              {availableCategories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
-              ))}
-            </Form.Select>
-            <Form.Text className="text-muted">
-              Hold Ctrl (Windows) or Cmd (Mac) to select multiple.
+            <Form.Label>Categories</Form.Label>
+            <div className="d-flex flex-wrap gap-2 mt-1">
+              {availableCategories.length === 0 ? (
+                <span className="text-muted small">No categories available. Please add some first.</span>
+              ) : (
+                availableCategories.map(cat => {
+                  const isSelected = selectedCategories.includes(cat.id);
+                  return (
+                    <div 
+                      key={cat.id} 
+                      className={`category-toggle-pill ${isSelected ? 'selected' : ''}`}
+                      onClick={() => handleCategoryToggle(cat.id)}
+                    >
+                      {cat.name}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <Form.Text className="text-muted d-block mt-2">
+              Click on a category to select or deselect it.
             </Form.Text>
           </Form.Group>
         </Form>

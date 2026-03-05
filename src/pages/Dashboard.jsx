@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Badge, Spinner, Alert, Button, Form } from 'react-bootstrap';
+import { Edit2, Trash2, Upload, Plus, Settings, X } from 'lucide-react';
 import { getTasks, deleteTask } from '../services/tasks';
 import TaskModal from '../components/TaskModal';
 import CategorySidebar from '../components/CategorySidebar';
 import UploadModal from '../components/UploadModal';
+import { getAttachmentUrl, isImage } from '../utils/attachmentUtils';
 
 const Dashboard = () => {
   const [tasks, setTasks] = useState([]);
@@ -20,6 +22,8 @@ const Dashboard = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
+
+  const [lightboxSrc, setLightboxSrc] = useState(null);
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -68,21 +72,21 @@ const Dashboard = () => {
     }
   };
 
-  const getPriorityColor = (priority) => {
+  const getPriorityClass = (priority) => {
     switch(priority) {
-      case 'high': return 'danger';
-      case 'medium': return 'warning';
-      case 'low': return 'info';
-      default: return 'secondary';
+      case 'high': return 'pill-high';
+      case 'medium': return 'pill-medium';
+      case 'low': return 'pill-low';
+      default: return 'glass-pill';
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusClass = (status) => {
       switch(status) {
-          case 'todo': return 'warning';
-          case 'in_progress': return 'primary';
-          case 'done': return 'success';
-          default: return 'secondary';
+          case 'todo': return 'pill-todo';
+          case 'in_progress': return 'pill-progress';
+          case 'done': return 'pill-done';
+          default: return 'glass-pill';
       }
   };
 
@@ -92,13 +96,17 @@ const Dashboard = () => {
         <Col>
           <h2>My Tasks</h2>
         </Col>
-        <Col xs="auto">
-          <Button variant="outline-secondary" className="me-2" onClick={() => setShowCategories(true)}>Manage Categories</Button>
-          <Button variant="primary" onClick={handleShowNewTask}>Add New Task</Button>
+        <Col xs="auto" className="d-flex align-items-center">
+          <Button variant="link" className="text-decoration-none me-3 theme-toggle d-flex align-items-center" style={{ color: 'var(--text-primary)' }} onClick={() => setShowCategories(true)}>
+             <Settings size={20} className="me-2" /> Categories
+          </Button>
+          <Button className="btn-primary-action" onClick={handleShowNewTask} title="Add New Task">
+             <Plus size={28} />
+          </Button>
         </Col>
       </Row>
 
-      <Card className="mb-4 shadow-sm">
+      <Card className="mb-4 premium-card">
         <Card.Body>
           <Form onSubmit={(e) => { e.preventDefault(); fetchTasks(); }}>
             <Row className="g-2">
@@ -119,7 +127,7 @@ const Dashboard = () => {
                 </Form.Select>
               </Col>
               <Col md={2}>
-                <Button type="submit" variant="dark" className="w-100">Search</Button>
+                <Button type="submit" className="w-100 btn-glass-solid">Search</Button>
               </Col>
             </Row>
           </Form>
@@ -141,19 +149,19 @@ const Dashboard = () => {
           ) : (
             tasks.map(task => (
               <Col key={task.id}>
-                <Card className="h-100 shadow-sm">
+                <Card className="h-100 premium-card">
                   <Card.Body>
                     <div className="d-flex justify-content-between align-items-start mb-2">
-                      <Card.Title className="text-truncate mb-0" style={{ maxWidth: '70%'}}>
+                      <Card.Title className="text-truncate mb-0 fw-bold" style={{ maxWidth: '70%', letterSpacing: '-0.03em'}}>
                         {task.title}
                       </Card.Title>
-                      <Badge bg={getPriorityColor(task.priority)}>
+                      <Badge bg="transparent" className={`glass-pill ${getPriorityClass(task.priority)}`}>
                         {task.priority?.toUpperCase() || 'NORMAL'}
                       </Badge>
                     </div>
                     
-                    <Badge bg={getStatusColor(task.status)} className="mb-3">
-                        {task.status?.replace('_', ' ').toUpperCase() || 'PENDING'}
+                    <Badge bg="transparent" className={`mb-3 glass-pill ${getStatusClass(task.status)}`}>
+                        {task.status?.replace('_', ' ').toUpperCase() || 'TODO'}
                     </Badge>
                     
                     <Card.Text className="text-muted" style={{ fontSize: '0.9rem' }}>
@@ -162,9 +170,9 @@ const Dashboard = () => {
                     
                     {task.categories?.length > 0 && (
                       <div className="mt-2 text-truncate">
-                        <small className="text-muted fw-bold me-2">Categories:</small>
+                        <small className="text-muted fw-bold me-2" style={{ letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '0.7rem' }}>Categories:</small>
                         {task.categories.map(cat => (
-                           <Badge key={cat.id} bg="light" text="dark" border="secondary" className="me-1 border">
+                           <Badge key={cat.id} bg="transparent" className="me-1 glass-pill" style={{ fontSize: '0.65rem' }}>
                               {cat.name}
                            </Badge>
                         ))}
@@ -172,22 +180,45 @@ const Dashboard = () => {
                     )}
                     {task.attachments && task.attachments.length > 0 && (
                       <div className="mt-3">
-                        <small className="text-muted d-block mb-1">Attachments:</small>
-                        {task.attachments.map(att => (
-                          <Badge bg="secondary" className="me-1" key={att.id}>{att.filename}</Badge>
-                        ))}
+                        <small className="text-muted d-block mb-2 fw-bold" style={{ letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '0.7rem' }}>Attachments:</small>
+                        <div className="att-preview-grid">
+                          {task.attachments.map(att => {
+                            const url = getAttachmentUrl(task.id, att.filename);
+                            return isImage(att.filename) ? (
+                              <button
+                                key={att.id}
+                                className="att-thumb-btn"
+                                onClick={() => setLightboxSrc(url)}
+                                title={att.filename}
+                              >
+                                <img src={url} alt={att.filename} className="att-thumb" />
+                                <span className="att-thumb-overlay">🔍</span>
+                              </button>
+                            ) : (
+                              <Badge key={att.id} bg="transparent" className="me-1 glass-pill" style={{ fontSize: '0.65rem' }}>
+                                {att.filename}
+                              </Badge>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
                   </Card.Body>
-                  <Card.Footer className="bg-white border-top-0 pt-0">
+                  <Card.Footer>
                     <div className="d-flex justify-content-between align-items-center">
-                       <small className="text-muted">
+                       <small className="text-muted" style={{ fontWeight: 500 }}>
                          {task.due_date ? `Due: ${new Date(task.due_date).toLocaleDateString()}` : 'No due date'}
                        </small>
-                       <div>
-                         <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleShowUpload(task.id)}>Upload</Button>
-                         <Button variant="outline-secondary" size="sm" className="me-2" onClick={() => handleEditTask(task)}>Edit</Button>
-                         <Button variant="outline-danger" size="sm" onClick={() => handleDeleteTask(task.id)}>Delete</Button>
+                       <div className="d-flex gap-2">
+                         <Button variant="link" className="btn-glass-sm" onClick={() => handleShowUpload(task.id)} title="Upload Attachment">
+                           <Upload size={16} />
+                         </Button>
+                         <Button variant="link" className="btn-glass-sm" onClick={() => handleEditTask(task)} title="Edit Task">
+                           <Edit2 size={16} />
+                         </Button>
+                         <Button variant="link" className="btn-glass-sm" onClick={() => handleDeleteTask(task.id)} title="Delete Task" style={{ color: '#ef4444' }}>
+                           <Trash2 size={16} />
+                         </Button>
                        </div>
                     </div>
                   </Card.Footer>
@@ -216,6 +247,21 @@ const Dashboard = () => {
         taskId={uploadTaskId}
         refreshTasks={fetchTasks}
       />
+
+      {/* Lightbox */}
+      {lightboxSrc && (
+        <div className="att-lightbox" onClick={() => setLightboxSrc(null)}>
+          <button className="att-lightbox-close" onClick={() => setLightboxSrc(null)}>
+            <X size={22} />
+          </button>
+          <img
+            src={lightboxSrc}
+            alt="Preview"
+            className="att-lightbox-img"
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      )}
     </Container>
   );
 };
