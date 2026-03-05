@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Container, Spinner, Alert, Badge } from 'react-bootstrap';
-import { ChevronLeft, ChevronRight, CalendarDays, Edit2, X, Paperclip, Calendar, Images, Tag, AlignLeft, Image } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Edit2, X, Paperclip, Calendar, Images, Tag, AlignLeft, Image, Plus } from 'lucide-react';
 import { getTasks } from '../services/tasks';
 import TaskModal from '../components/TaskModal';
 import { getAttachmentUrl, isImage } from '../utils/attachmentUtils';
@@ -29,8 +29,34 @@ const getStatusClass = (status) => {
   }
 };
 
+// ─── Attachment Image with Skeleton ──────────────────────────────────────────
+const AttachmentThumb = ({ att, taskId, onLightbox, index }) => {
+  const [loaded, setLoaded] = useState(false);
+  const url = getAttachmentUrl(taskId, att.filename);
+  return (
+    <button
+      className="att-thumb-btn cal-preview-thumb"
+      onClick={() => onLightbox(url)}
+      title={att.filename}
+      style={{ animationDelay: `${index * 60}ms` }}
+    >
+      {!loaded && <div className="cal-preview-img-skeleton" />}
+      <img
+        src={url}
+        alt={att.filename}
+        className="att-thumb"
+        style={{ opacity: loaded ? 1 : 0, transition: 'opacity 0.2s ease' }}
+        onLoad={() => setLoaded(true)}
+      />
+      <span className="att-thumb-overlay">
+        <Image size={14} />
+      </span>
+    </button>
+  );
+};
+
 // ─── Task Preview Popover ──────────────────────────────────────────────────────
-const TaskPreviewCard = ({ task, onEdit, onClose, onLightbox }) => {
+const TaskPreviewCard = ({ task, dayTasks, taskIndex, onEdit, onClose, onLightbox, onNavigate }) => {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -42,14 +68,23 @@ const TaskPreviewCard = ({ task, onEdit, onClose, onLightbox }) => {
   }, [onClose]);
 
   useEffect(() => {
-    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key === 'ArrowRight') { e.preventDefault(); onNavigate(1); }
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); onNavigate(-1); }
+    };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [onClose]);
+  }, [onClose, onNavigate]);
 
   const imageAtts = task.attachments?.filter(a => isImage(a.filename)) || [];
   const fileAtts  = task.attachments?.filter(a => !isImage(a.filename)) || [];
-  const hasAttachments = imageAtts.length > 0 || fileAtts.length > 0;
+  const hasImages = imageAtts.length > 0;
+  const hasFiles  = fileAtts.length > 0;
+  const hasAttachments = hasImages || hasFiles;
+
+  const total = dayTasks?.length ?? 0;
+  const current = (taskIndex ?? 0) + 1;
 
   return (
     <div className="cal-preview-card" ref={ref}>
@@ -58,6 +93,19 @@ const TaskPreviewCard = ({ task, onEdit, onClose, onLightbox }) => {
       <div className="cal-preview-topbar">
         <span className="cal-preview-title">{task.title}</span>
         <div className="cal-preview-actions">
+          {total > 1 && (
+            <span className="cal-preview-nav-label">{current}/{total}</span>
+          )}
+          {total > 1 && (
+            <button className="cal-preview-icon-btn" onClick={() => onNavigate(-1)} title="Previous task (←)">
+              <ChevronLeft size={13} />
+            </button>
+          )}
+          {total > 1 && (
+            <button className="cal-preview-icon-btn" onClick={() => onNavigate(1)} title="Next task (→)">
+              <ChevronRight size={13} />
+            </button>
+          )}
           <button className="cal-preview-icon-btn cal-preview-edit-btn" onClick={onEdit} title="Edit Task">
             <Edit2 size={13} />
             <span>Edit</span>
@@ -69,7 +117,7 @@ const TaskPreviewCard = ({ task, onEdit, onClose, onLightbox }) => {
       </div>
 
       {/* ── Two-column body ────────────────────────────────── */}
-      <div className={`cal-preview-body ${!hasAttachments ? 'cal-preview-body--single' : ''}`}>
+      <div className="cal-preview-body">
 
         {/* LEFT — task metadata */}
         <div className="cal-preview-left">
@@ -115,49 +163,49 @@ const TaskPreviewCard = ({ task, onEdit, onClose, onLightbox }) => {
           )}
         </div>
 
-        {/* RIGHT — attachments (only rendered when there are files) */}
-        {hasAttachments && (
-          <div className="cal-preview-right">
-            <div className="cal-preview-section-label">
-              <Images size={12} />
-              <span>Attachments</span>
-            </div>
-
-            {/* Image thumbnails */}
-            {imageAtts.length > 0 && (
-              <div className="cal-preview-images">
-                {imageAtts.map(att => {
-                  const url = getAttachmentUrl(task.id, att.filename);
-                  return (
-                    <button
-                      key={att.id}
-                      className="att-thumb-btn cal-preview-thumb"
-                      onClick={() => onLightbox(url)}
-                      title={att.filename}
-                    >
-                      <img src={url} alt={att.filename} className="att-thumb" />
-                      <span className="att-thumb-overlay">
-                        <Image size={14} />
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Non-image files */}
-            {fileAtts.length > 0 && (
-              <div className="cal-preview-files">
-                {fileAtts.map(att => (
-                  <span key={att.id} className="cal-preview-file-pill">
-                    <Paperclip size={10} />
-                    {att.filename}
-                  </span>
-                ))}
-              </div>
-            )}
+        {/* RIGHT — attachments (always rendered) */}
+        <div className="cal-preview-right">
+          <div className="cal-preview-section-label">
+            <Images size={12} />
+            <span>Attachments</span>
           </div>
-        )}
+
+          {hasAttachments ? (
+            <>
+              {/* Image thumbnails */}
+              {hasImages && (
+                <div className="cal-preview-images">
+                  {imageAtts.map((att, i) => (
+                    <AttachmentThumb
+                      key={att.id}
+                      att={att}
+                      taskId={task.id}
+                      onLightbox={onLightbox}
+                      index={i}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Non-image files */}
+              {hasFiles && (
+                <div className="cal-preview-files">
+                  {fileAtts.map(att => (
+                    <span key={att.id} className="cal-preview-file-pill">
+                      <Paperclip size={10} />
+                      {att.filename}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="cal-preview-no-attachments">
+              <Paperclip size={22} />
+              <span>No attachments</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -175,6 +223,8 @@ const CalendarPage = () => {
 
   // Preview card state
   const [previewTask, setPreviewTask] = useState(null);
+  const [previewDayTasks, setPreviewDayTasks] = useState([]);
+  const [previewTaskIndex, setPreviewTaskIndex] = useState(0);
 
   // Edit modal state
   const [editingTask, setEditingTask] = useState(null);
@@ -198,6 +248,22 @@ const CalendarPage = () => {
 
   useEffect(() => { fetchTasks(); }, []);
 
+  // Global hotkey: 'N' → open new task modal
+  useEffect(() => {
+    const handler = (e) => {
+      // Don't trigger when typing inside an input/textarea/contenteditable
+      const tag = e.target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || e.target?.isContentEditable) return;
+      if (e.key === 'n' || e.key === 'N') {
+        setPreviewTask(null);
+        setEditingTask(null);
+        setShowModal(true);
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
+
   // Group tasks by date string "YYYY-MM-DD"
   const tasksByDate = tasks.reduce((acc, task) => {
     if (task.due_date) {
@@ -217,16 +283,18 @@ const CalendarPage = () => {
 
   const cells = [];
   for (let i = firstDay - 1; i >= 0; i--) {
-    cells.push({ day: daysInPrevMonth - i, thisMonth: false, date: null });
+    cells.push({ day: daysInPrevMonth - i, thisMonth: false, date: null, weekdayIndex: firstDay - 1 - i });
   }
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    cells.push({ day: d, thisMonth: true, date: dateStr });
+    const weekdayIndex = new Date(viewYear, viewMonth, d).getDay();
+    cells.push({ day: d, thisMonth: true, date: dateStr, weekdayIndex });
   }
   const remaining = 7 - (cells.length % 7);
   if (remaining < 7) {
     for (let i = 1; i <= remaining; i++) {
-      cells.push({ day: i, thisMonth: false, date: null });
+      const weekdayIndex = (firstDay + daysInMonth + i - 1) % 7;
+      cells.push({ day: i, thisMonth: false, date: null, weekdayIndex });
     }
   }
 
@@ -239,7 +307,22 @@ const CalendarPage = () => {
     else setViewMonth(m => m + 1);
   };
 
-  const openPreview = (task) => setPreviewTask(task);
+  const openPreview = (task, dayTasks) => {
+    const idx = dayTasks.indexOf(task);
+    setPreviewTask(task);
+    setPreviewDayTasks(dayTasks);
+    setPreviewTaskIndex(idx >= 0 ? idx : 0);
+  };
+
+  const navigatePreview = useCallback((delta) => {
+    setPreviewTaskIndex(prev => {
+      const next = prev + delta;
+      if (next < 0 || next >= previewDayTasks.length) return prev;
+      setPreviewTask(previewDayTasks[next]);
+      return next;
+    });
+  }, [previewDayTasks]);
+
   const openEdit = (task) => {
     setPreviewTask(null);
     setEditingTask(task);
@@ -270,6 +353,15 @@ const CalendarPage = () => {
           >
             Today
           </button>
+          <button
+            className="cal-new-task-btn"
+            onClick={() => { setEditingTask(null); setShowModal(true); }}
+            title="New task (N)"
+          >
+            <Plus size={14} />
+            <span>New Task</span>
+            <kbd className="cal-kbd">N</kbd>
+          </button>
         </div>
       </div>
 
@@ -282,13 +374,14 @@ const CalendarPage = () => {
           {/* Calendar Grid */}
           <div className="cal-grid-wrapper">
             <div className="cal-grid">
-              {WEEKDAYS.map(d => (
-                <div key={d} className="cal-weekday-header">{d}</div>
+              {WEEKDAYS.map((d, i) => (
+                <div key={d} className={`cal-weekday-header ${i === 0 || i === 6 ? 'cal-weekday-header--weekend' : ''}`}>{d}</div>
               ))}
 
               {cells.map((cell, idx) => {
                 const cellTasks = cell.date ? (tasksByDate[cell.date] || []) : [];
                 const isToday = cell.date === todayStr;
+                const isWeekend = cell.weekdayIndex === 0 || cell.weekdayIndex === 6;
                 const MAX_VISIBLE = 3;
                 const overflow = cellTasks.length - MAX_VISIBLE;
 
@@ -299,6 +392,7 @@ const CalendarPage = () => {
                       'cal-day',
                       !cell.thisMonth && 'cal-day--other-month',
                       isToday && 'cal-day--today',
+                      isWeekend && 'cal-day--weekend',
                     ].filter(Boolean).join(' ')}
                   >
                     <span className={`cal-day-number ${isToday ? 'cal-day-number--today' : ''}`}>
@@ -310,13 +404,14 @@ const CalendarPage = () => {
                         <button
                           key={task.id}
                           className={`cal-task-pill ${getPriorityPillClass(task.priority)}`}
-                          onClick={() => openPreview(task)}
+                          onClick={() => openPreview(task, cellTasks)}
                           title={task.title}
                         >
-                          <span className="cal-task-pill-dot" />
                           <span className="cal-task-pill-text">{task.title}</span>
-                          {task.attachments?.some(a => isImage(a.filename)) && (
-                            <span className="cal-task-pill-img-badge" title="Has images">🖼</span>
+                          {task.attachments?.length > 0 && (
+                            <span className="cal-task-pill-att" title="Has attachments">
+                              <Paperclip size={9} />
+                            </span>
                           )}
                         </button>
                       ))}
@@ -339,10 +434,9 @@ const CalendarPage = () => {
                   <button
                     key={task.id}
                     className={`cal-task-pill cal-task-pill--lg ${getPriorityPillClass(task.priority)}`}
-                    onClick={() => openPreview(task)}
+                    onClick={() => openPreview(task, unscheduled)}
                     title={task.title}
                   >
-                    <span className="cal-task-pill-dot" />
                     {task.title}
                   </button>
                 ))}
@@ -357,9 +451,12 @@ const CalendarPage = () => {
         <div className="cal-preview-overlay">
           <TaskPreviewCard
             task={previewTask}
+            dayTasks={previewDayTasks}
+            taskIndex={previewTaskIndex}
             onEdit={() => openEdit(previewTask)}
             onClose={() => setPreviewTask(null)}
             onLightbox={setLightboxSrc}
+            onNavigate={navigatePreview}
           />
         </div>
       )}

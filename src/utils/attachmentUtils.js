@@ -1,8 +1,5 @@
-/**
- * Returns the public URL for an attachment served by the backend.
- * Files are stored as: uploads/{task_id}_{filename}
- */
-const API_BASE = 'http://localhost:8000';
+// Demo mode: no backend — attachment URLs are unused (all tasks have empty attachments)
+const API_BASE = '';
 
 export const getAttachmentUrl = (taskId, filename) =>
   `${API_BASE}/uploads/${taskId}_${filename}`;

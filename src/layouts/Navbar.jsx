@@ -10,9 +10,10 @@ const NavigationBar = () => {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const navigate = useNavigate();
 
+  // Demo mode: logout stays on dashboard
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/dashboard');
   };
 
   return (
