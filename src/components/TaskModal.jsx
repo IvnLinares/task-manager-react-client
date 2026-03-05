@@ -7,7 +7,7 @@ const TaskModal = ({ show, handleClose, refreshTasks, editingTask }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
-  const [status, setStatus] = useState('pending');
+  const [status, setStatus] = useState('todo');
   const [dueDate, setDueDate] = useState('');
   const [selectedCategories, setSelectedCategories] = useState([]);
   
@@ -45,7 +45,7 @@ const TaskModal = ({ show, handleClose, refreshTasks, editingTask }) => {
     setTitle('');
     setDescription('');
     setPriority('medium');
-    setStatus('pending');
+    setStatus('todo');
     setDueDate('');
     setSelectedCategories([]);
     setError('');
@@ -85,7 +85,14 @@ const TaskModal = ({ show, handleClose, refreshTasks, editingTask }) => {
       refreshTasks();
       handleClose();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to save task.');
+      const detail = err.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        setError(detail.map(d => `${d.loc.at(-1)}: ${d.msg}`).join(', '));
+      } else if (typeof detail === 'string') {
+        setError(detail);
+      } else {
+        setError('Failed to save task.');
+      }
     } finally {
       setLoading(false);
     }
@@ -123,9 +130,9 @@ const TaskModal = ({ show, handleClose, refreshTasks, editingTask }) => {
             <Form.Group className="col-md-6 mb-3">
               <Form.Label>Status</Form.Label>
               <Form.Select value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="pending">Pending</option>
+                <option value="todo">To Do</option>
                 <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
+                <option value="done">Done</option>
               </Form.Select>
             </Form.Group>
             

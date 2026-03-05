@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Badge, Spinner, Alert, Button } from 'react-bootstrap';
+import { Container, Row, Col, Card, Badge, Spinner, Alert, Button, Form } from 'react-bootstrap';
 import { getTasks, deleteTask } from '../services/tasks';
 import TaskModal from '../components/TaskModal';
 import CategorySidebar from '../components/CategorySidebar';
@@ -79,9 +79,9 @@ const Dashboard = () => {
 
   const getStatusColor = (status) => {
       switch(status) {
-          case 'pending': return 'warning';
+          case 'todo': return 'warning';
           case 'in_progress': return 'primary';
-          case 'completed': return 'success';
+          case 'done': return 'success';
           default: return 'secondary';
       }
   };
