@@ -10,10 +10,37 @@
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <title>task-manager-frontend</title>
+    <title>Task Manager</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <style>
+        .app-initial-loader {
+          position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          background-color: #0A0A0A; color: white;
+          font-family: 'Inter', -apple-system, sans-serif; z-index: 9999;
+        }
+        .app-initial-loader h1 {
+          font-size: 2.5rem; font-weight: 800; margin-bottom: 1.5rem;
+          background: linear-gradient(135deg, #a78bfa, #60a5fa);
+          -webkit-background-clip: text; background-clip: text;
+          -webkit-text-fill-color: transparent; color: transparent;
+        }
+        .loader-spinner {
+          width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.1);
+          border-radius: 50%; border-top-color: #a78bfa;
+          animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        body.light-theme .app-initial-loader { background-color: #F8FAFC; color: #111827; }
+        body.light-theme .loader-spinner { border-color: rgba(0,0,0,0.1); border-top-color: #60a5fa; }
+      </style>
+      <div class="app-initial-loader" id="initial-loader">
+        <h1>Task Manager</h1>
+        <div class="loader-spinner"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
